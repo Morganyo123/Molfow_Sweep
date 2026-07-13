@@ -221,3 +221,4 @@ __marimo__/
 
 /sweep_runs
 *.xml
+experiments/*/sweep_runs/
