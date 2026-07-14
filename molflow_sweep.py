@@ -1,30 +1,10 @@
 """
-molflow_sweep — a small library for Molflow+ position sweeps.
+molflow_sweep — a class for Molflow position sweeps.
 
-What it does (and all it does):
+What it does:
   1. Move facets in a geometry XML and save the shifted file.
   2. Run molflowCLI on that file.
   3. Extract raw values from facet_details.csv into a summary CSV.
-
-Derived metrics, plots, and analysis belong in your notebook, not here.
-
-Typical use — see run_sweep_example.py:
-
-    cfg   = SweepConfig(...)
-    sweep = MolflowSweep(cfg)
-    sweep.run_grid([0.0, 0.5, 1.0, ...])       # simple 1D sweep
-
-Advanced use (multi-facet search / optimisation): call `evaluate()`
-directly with any combination of moves:
-
-    row = sweep.evaluate(
-        moves=[(["plate_front", "plate_back"], 0, 1.5),   # facets, axis, offset
-               (["deflector"],                 2, -0.3)],
-        run_id="trial_007",
-    )
-
-`evaluate()` returns a plain dict of raw values, so it plugs straight into
-an Optuna objective or any other search loop.
 """
 
 import csv
@@ -35,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Molflow geometry XML structure (fixed by the file format — do not edit):
+# Molflow geometry XML structure (fixed by the file format):
 #   <Geometry><Vertices><Vertex id= x= y= z=/></Vertices>
 #             <Facets><Facet id=...><Indices><Indice vertex=.../></Indices>
 # ---------------------------------------------------------------------------
@@ -51,7 +31,7 @@ class FacetRef:
 
     xml_id: the <Facet id="..."> value in the geometry XML
     csv_id: the '#' column value in facet_details.csv
-    (These differ — usually by 1. Conflating them causes silent bugs.)
+    (csv_id matches molflow gui, and is always xml_id + 1, but we store both for clarity)
     """
     name: str
     xml_id: int
@@ -60,7 +40,7 @@ class FacetRef:
 
 @dataclass
 class SweepConfig:
-    """Everything you need to edit to run a sweep on YOUR geometry."""
+    """Everything to configure a sweep"""
 
     molflow_exe: Path            # full path to molflowCLI.exe
     base_geometry: Path          # your geometry XML file
@@ -75,7 +55,6 @@ class SweepConfig:
     threads: str = "8"
 
     # Which facet_details.csv columns to save, {short_name: exact CSV header}.
-    # To track another quantity, add one line here — nothing else changes.
     columns: dict = field(default_factory=lambda: {
         "mc_hits":     "MC Hits",
         "equiv_abs":   "Equiv.abs.",
@@ -83,6 +62,7 @@ class SweepConfig:
     })
 
     def __post_init__(self):
+        """Check that the config is valid"""
         self.molflow_exe = Path(self.molflow_exe)
         self.base_geometry = Path(self.base_geometry)
         self.out_dir = Path(self.out_dir)
@@ -103,8 +83,7 @@ class MolflowSweep:
     def __init__(self, config: SweepConfig):
         self.cfg = config
 
-    # -- 1. GEOMETRY --------------------------------------------------------
-
+    #GEOMETRY
     def write_shifted_geometry(self, out_path, moves):
         """Apply `moves` to the base geometry and save it to `out_path`.
 
@@ -126,12 +105,13 @@ class MolflowSweep:
 
     @staticmethod
     def _vertex_ids_of_facet(root, xml_id):
+        """Return the set of vertex ids used by the facet with xml_id."""
         for facet in root.iter(FACET_TAG):
             if int(facet.get(FACET_ID)) == xml_id:
                 return {int(i.get(INDICE_V)) for i in facet.iter(INDICE_TAG)}
         raise ValueError(f"XML facet id={xml_id} not found in geometry")
 
-    # -- 2. SIMULATION ------------------------------------------------------
+    #SIMULATION
 
     def run_cli(self, geom_path, run_dir):
         """Run molflowCLI on `geom_path`; return path to facet_details.csv."""
@@ -145,14 +125,13 @@ class MolflowSweep:
         subprocess.run(cmd, cwd=run_dir, check=True)
         return run_dir / "results" / "facet_details.csv"
 
-    # -- 3. RESULTS ---------------------------------------------------------
+    #RESULTS
 
     def extract(self, csv_path):
         """Read one facet_details.csv -> flat dict of raw values.
 
         Returns total_des (summed over all facets) plus, for every facet in
-        result_facets, one entry per column in cfg.columns,
-        e.g. 'plate_front_mc_hits'.
+        result_facets, one entry per column in cfg.columns.
         """
         with open(csv_path, newline="") as f:
             rows = list(csv.DictReader(f))
@@ -175,7 +154,7 @@ class MolflowSweep:
         raise ValueError(f"{facet.name} (csv_id={facet.csv_id}) not found in "
                          f"{len(rows)}-row CSV")
 
-    # -- ONE FULL TRIAL: geometry -> CLI -> results --------------------------
+    #ONE FULL TRIAL: geometry -> CLI -> results 
 
     def evaluate(self, moves, run_id):
         """Run one simulation with facets moved as specified.
@@ -183,8 +162,7 @@ class MolflowSweep:
         moves:  list of (facet_names, axis, offset) — see write_shifted_geometry
         run_id: any string/number unique to this trial (names the run folder)
 
-        Returns a flat dict of raw values. This is the building block for
-        grid sweeps, multi-facet searches, and optimisation loops alike.
+        Returns a flat dict of raw values.
         """
         run_dir = self.cfg.out_dir / f"run_{run_id}"
         geom = self.cfg.out_dir / f"geom_{run_id}.xml"
@@ -206,11 +184,10 @@ class MolflowSweep:
                 w.writerow(["run_id", "moves", "run_dir"])
             w.writerow([run_id, repr(moves), run_dir])
 
-    # -- DRIVER: simple 1D grid sweep ----------------------------------------
-
+    #simple 1D grid sweep 
     def run_grid(self, positions):
         """Sweep cfg.move_facets along cfg.axis over `positions` (list of
-        offsets). Failed runs are recorded, not fatal. Writes summary CSV
+        offsets). Failed runs are recorded. Writes summary CSV
         and returns the results as a list of dicts."""
         results = []
         for i, off in enumerate(positions):
