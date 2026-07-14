@@ -24,8 +24,8 @@ cfg = SweepConfig(
 
 sweep = MolflowSweep(cfg)
 
-#--- Simple 1D grid sweep ---------------------------------------------------
-positions = [i * 0.5 for i in range(21)]        # 0.0 ... 10.0 cm
+#Sweep plate along x
+positions = [i * 0.5 for i in range(21)]        # 0.0 to 10.0 cm
 sweep.run_grid(positions)
 
 

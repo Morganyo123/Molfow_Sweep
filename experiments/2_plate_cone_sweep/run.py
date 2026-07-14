@@ -6,15 +6,17 @@ from molflow_sweep import FacetRef, SweepConfig, MolflowSweep
 
 PLATE = ["plate_front", "plate_back"]
 
+
+#cone has 36 facets, plus front and back, so 38 in total
 CONE = ["cfront","cback","c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10","c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20","c21", "c22", "c23", "c24", "c25", "c26", "c27", "c28", "c29", "c30", "c31", "c32", "c33", "c34", "c35", "c36"]
 
 cfg = SweepConfig(
     molflow_exe=r"C:\Users\morga\Documents\molflow_win_2.11.1\molflow_win_2.11.1\molflowCLI.exe",
-    base_geometry="geometries\simplified_target_baseplate_cone.xml",
+    base_geometry="geometries\\simplified_target_baseplate_cone.xml",
     out_dir=str(Path(__file__).resolve().parent / "sweep_runs"),
 
     facets={
-        "plate_front": FacetRef("plate_front", xml_id=175, csv_id=176),
+        "plate_front": FacetRef("plate_front", xml_id=175, csv_id=176), #plate facet changed in this geometry
         "plate_back":  FacetRef("plate_back",  xml_id=176, csv_id=177),
         "deflector":   FacetRef("deflector",   xml_id=252, csv_id=253),
         "cfront":      FacetRef("cfront",      xml_id=255, csv_id=256),
@@ -60,26 +62,34 @@ cfg = SweepConfig(
     result_facets=PLATE + CONE + ["deflector"],   # saved to summary
 
     axis=0,                       # 0=x, 1=y, 2=z
-    ndes="1e3",
+    ndes="1e5",
     threads="8",
+    
 )
 
 sweep = MolflowSweep(cfg)
 
 results = []
 
+
+#sweep 10 plate positions, and for each plate position sweep 5 cone positions
+#start geometry has plate and cone both offset from deflector by 0.5cm
+
 for i in range(0,11):
 
-    for j in range(i,i+5):
+    for j in range(0,5):
+
+        plate_off = 0.5*i #steps of 0.5 cm for the plate
         
-        plate_off = 0.5*i
-        cone_off = 0.5*j
+        #steps of 0.25 cm for the cone, starting at -0.25 cm relative to the plate 
+        #to capture what happens if the plate is within the cone
+        cone_off = plate_off + 0.25*j -0.25 
+
         row = sweep.evaluate(
         moves=[(PLATE, 0, plate_off),   # facets, axis, offset
                (CONE, 0, cone_off)],
         run_id=f"Plate_{plate_off}_Cone_{cone_off}")
         
-
         results.append(row)
 
 
