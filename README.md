@@ -68,4 +68,16 @@ Furthermore, each mutated geometry is saved as geom_{run_id}.xml
 
 ### Multi Facet/ Custom Sweep
 
-A custom sweep over multiple facets, can be implememted using ```sweep.evaluate(moves = (['plate'],0,0.5),run_id = "plate_x_0.5")``` . Pass a tuple with the label of the facet, the direction (0,1,2 for x,y,z) and the offset. This could then be put in you own loop. This returns a dict of raw values which can be stored in a list, and then saved with ```sweep.write_summarry()```. This returned dict can also then be used as an objective in an optomisation algorithm. 
+A custom sweep over multiple facets, can be implememted using;
+
+```python\n
+row = sweep.evaluate(moves = [(['plate'],0,0.5), #move plate 0.5 in x
+                        (['deflector],1,1.5)], #move deflector 1.5 in y
+                        run_id = "plate_x_0.5_deflector_y_1.5")
+``` 
+
+ Pass a list of tuples with the label of the facet, the direction (0,1,2 for x,y,z) and the offset. This could then be put in you own loop to loop over multiple facets.
+
+ This returns a dict of raw values which can be stored in a list, and then saved with ```sweep.write_summarry()```. Note than run_index.csv is automatically created and stores the offsets and facets used.
+
+ The returned dict can also then be used as an objective in an optimisation algorithm etc. 
