@@ -1,9 +1,13 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[2]))   # repo root
+
 from molflow_sweep import FacetRef, SweepConfig, MolflowSweep
 
 cfg = SweepConfig(
     molflow_exe=r"C:\Users\morga\Documents\molflow_win_2.11.1\molflow_win_2.11.1\molflowCLI.exe",
-    base_geometry="simplified_target_baseplate.xml",
-    out_dir="sweep_runs",
+    base_geometry="geometries\simplified_target_baseplate.xml",
+    out_dir=str(Path(__file__).resolve().parent / "sweep_runs"),
 
     facets={
         "plate_front": FacetRef("plate_front", xml_id=211, csv_id=212),
