@@ -1,15 +1,3 @@
-"""
-Run a Molflow position sweep.
-
-This is the ONLY file you need to edit for your own project:
-  1. Set the paths.
-  2. List your facets (xml_id from the geometry XML, csv_id from
-     facet_details.csv '#' column — they are different numbers!).
-  3. Say which facets move and which facets you want results from.
-  4. Choose the sweep positions.
-Then:  python run_sweep_example.py
-"""
-
 from molflow_sweep import FacetRef, SweepConfig, MolflowSweep
 
 cfg = SweepConfig(
@@ -32,40 +20,48 @@ cfg = SweepConfig(
 
 sweep = MolflowSweep(cfg)
 
-# --- Simple 1D grid sweep ---------------------------------------------------
-#positions = [i * 0.5 for i in range(5)]        # 0.0 ... 10.0 cm
-#sweep.run_grid(positions)
+test_mode = 'grid' #change to 'multi' or 'optuna' to test other modes
 
 
-# --- Going further (delete if not needed) -----------------------------------
-#
+
+#Simple 1D grid sweep 
+
+if test_mode == 'grid':
+    positions = [i * 0.5 for i in range(5)]        # 0.0 ... 10.0 cm
+    sweep.run_grid(positions)
+
+
+
 # Multi-facet search: evaluate() accepts any combination of moves, so you can
 # place different facets independently in one trial:
-#
-result = sweep.evaluate(
-      moves=[(cfg.move_facets, 0, 1.5),
-              (["deflector"],                 2, -0.3)],
-       run_id="plate1.5_defl-0.3",
-   )
-print(result)   # dict of raw values, ready for Optuna or any other search loop
-results = [result]  # list of dicts, one per trial
 
-sweep.write_summary(results, path= cfg.out_dir / "position_sweep_summary.csv")   # append to summary CSV
+if test_mode == 'multi':
+
+    result = sweep.evaluate(
+        moves=[(cfg.move_facets, 0, 1.5),
+                (["deflector"], 2, -0.3)],
+        run_id="plate1.5_defl-0.3",
+    )
+    print(result)   # dict of raw values, ready for Optuna or any other search loop
+    results = [result]  # list of dicts, one per trial
+
+    sweep.write_summary(results, path= cfg.out_dir / "position_sweep_summary.csv")   # append to summary CSV
 
 
 
 
 # Optimisation (e.g. Optuna): evaluate() returns raw values immediately, so it
 # works directly as an objective:
-#
-#   import optuna
-#
-#   def objective(trial):
-#       off = trial.suggest_float("offset", 0.0, 10.0)
-#       r = sweep.evaluate([(cfg.move_facets, cfg.axis, off)],
-#                          run_id=f"opt_{trial.number}")
-#       return (r["plate_front_mc_hits"] + r["plate_back_mc_hits"]) / r["total_des"]
-#
-#   study = optuna.create_study(direction="maximize",
-#                               sampler=optuna.samplers.TPESampler())
-#   study.optimize(objective, n_trials=30)
+
+if test_mode == 'optuna':
+    import optuna
+    
+    def objective(trial):
+        off = trial.suggest_float("offset", 0.0, 10.0)
+        r = sweep.evaluate([(cfg.move_facets, cfg.axis, off)],
+                            run_id=f"opt_{trial.number}")
+        return (r["plate_front_mc_hits"] + r["plate_back_mc_hits"]) / r["total_des"]
+
+    study = optuna.create_study(direction="maximize",
+                            sampler=optuna.samplers.TPESampler())
+    study.optimize(objective, n_trials=30)
