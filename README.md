@@ -51,6 +51,8 @@ cfg = SweepConfig(
 - columns: a dictionary of facet properties you want to save, and what they are saved as.
 
 
+Then create an instance with ```sweep = MolflowSweep(cfg)```
+
 ### Grid Sweep
 
 A simple, one facet, grid sweep can be done by calling ```sweep.run_grid(positions) ```, where positions is a list of offsets to apply. 
@@ -66,4 +68,4 @@ Furthermore, each mutated geometry is saved as geom_{run_id}.xml
 
 ### Multi Facet/ Custom Sweep
 
-A custom sweep over multiple facets, can be implememted using ```sweep.evaluate(moves = (['plate'],0,0.5),run_id = "plate_x_0.5")``` . Pass a tuple with the label of the facet, the direction (0,1,2 for x,y,z) and the offset. This could then be put in you own loop. This returns a dict of raw values which could be used for an objective for an optomisation algorithm etc.
+A custom sweep over multiple facets, can be implememted using ```sweep.evaluate(moves = (['plate'],0,0.5),run_id = "plate_x_0.5")``` . Pass a tuple with the label of the facet, the direction (0,1,2 for x,y,z) and the offset. This could then be put in you own loop. This returns a dict of raw values which can be stored in a list, and then saved with ```sweep.write_summarry()```. This returned dict can also then be used as an objective in an optomisation algorithm. 
